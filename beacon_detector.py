@@ -5,7 +5,13 @@ import statistics
 from collections import deque
 from bleak import BleakScanner
 import asyncio
+import os
+import psycopg2
+from dotenv import load_dotenv
 import math
+
+
+load_dotenv()
 
 # --- Configuración del Escáner y la App ---
 BEACON_TIMEOUT = 15
@@ -19,6 +25,32 @@ APP_STATE = {
     "detected_beacons": {},
     "perimeter_rssi_levels": [] # Lista para guardar los 3 niveles de RSSI del perímetro
 }
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": os.getenv("DB_PORT"),
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "client_encoding": os.getenv("DB_CLIENT_ENCODING", "utf8")
+}
+
+def log_zone_change_event(mac_address, old_zone, new_zone, logger):
+    """Registra un cambio de zona en la tabla de eventos."""
+    logger(f"DB: Registrando evento de zona para {mac_address}...")
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        with conn.cursor() as cur:
+            mensaje = f"Alerta: Baliza {mac_address} cambió de zona {old_zone} a {new_zone}."
+            cur.execute("INSERT INTO eventos (mensaje) VALUES (%s)", (mensaje,))
+            conn.commit()
+            logger(f"DB: OK - Evento registrado para {mac_address}.")
+    except Exception as e:
+        logger(f"DB: ERROR al registrar evento para {mac_address}: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 def ble_scanner_thread():
     """Hilo de escaneo que solo se encarga de recolectar datos."""
@@ -189,6 +221,8 @@ def main(page: ft.Page):
                             if new_status != old_status:
                                 data['status'] = new_status
                                 add_log_message(f"Baliza {key} cambió de {old_status} a {new_status}.")
+                                if new_status == 'FUERA' or old_status == 'FUERA':
+                                    log_zone_change_event(key, old_status, new_status, add_log_message)
             
             map_stack.controls = map_stack.controls[:2]
             
