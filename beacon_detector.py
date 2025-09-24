@@ -13,7 +13,7 @@ import math
 
 load_dotenv()
 
-# --- Configuración del Escáner y la App ---
+# --- Configuracion del Escaner y la App ---
 BEACON_TIMEOUT = 15
 RSSI_SAMPLES_COUNT = 10
 CALIBRATION_DURATION = 10  # Segundos
@@ -23,7 +23,7 @@ APP_STATE = {
     "mode": "IDLE",  # Estados: IDLE, CALIBRATING, MONITORING
     "calibration_end_time": 0,
     "detected_beacons": {},
-    "perimeter_rssi_levels": [] # Lista para guardar los 3 niveles de RSSI del perímetro
+    "perimeter_rssi_levels": [] # Lista para guardar los 3 niveles de RSSI del perimetro
 }
 
 DB_CONFIG = {
@@ -42,7 +42,7 @@ def log_zone_change_event(mac_address, old_zone, new_zone, logger):
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         with conn.cursor() as cur:
-            mensaje = f"Alerta: Baliza {mac_address} cambió de zona {old_zone} a {new_zone}."
+            mensaje = f"Alerta: Baliza {mac_address} cambio de zona {old_zone} a {new_zone}."
             cur.execute("INSERT INTO eventos (mensaje) VALUES (%s)", (mensaje,))
             conn.commit()
             logger(f"DB: OK - Evento registrado para {mac_address}.")
@@ -85,7 +85,7 @@ def ble_scanner_thread():
     asyncio.run(scan_loop())
 
 def main(page: ft.Page):
-    page.title = "Mapa de Perímetro Dinámico BLE"
+    page.title = "Mapa de Perimetro Dinamico BLE"
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.bgcolor = "#1f262f"
     
@@ -111,15 +111,15 @@ def main(page: ft.Page):
             data['home_rssi'] = None
             data['status'] = 'CALIBRANDO'
         calibrate_button.disabled = True
-        add_log_message("Iniciando calibración...")
+        add_log_message("Iniciando calibracion...")
         
     def map_rssi_to_distance(rssi, map_radius):
         rssi_min, rssi_max = -95, -35
         normalized_rssi = max(0, min(1, (rssi - rssi_min) / (rssi_max - rssi_min)))
         return (1 - normalized_rssi) * map_radius
 
-    txt_status = ft.Text("Presiona 'Iniciar Calibración' para definir el perímetro.", size=16, weight=ft.FontWeight.BOLD)
-    calibrate_button = ft.ElevatedButton("Iniciar Calibración", on_click=start_calibration, icon=ft.Icons.SETTINGS_INPUT_COMPONENT)
+    txt_status = ft.Text("Presiona 'Iniciar Calibracion' para definir el perimetro.", size=16, weight=ft.FontWeight.BOLD)
+    calibrate_button = ft.ElevatedButton("Iniciar Calibracion", on_click=start_calibration, icon=ft.Icons.SETTINGS_INPUT_COMPONENT)
     
     MAP_SIZE = 400
     map_stack = ft.Stack(
@@ -136,7 +136,7 @@ def main(page: ft.Page):
     page.add(
         ft.Column(
             [
-                ft.Text("📡 Mapa de Proximidad de Balizas", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text("Mapa de Proximidad de Balizas", size=24, weight=ft.FontWeight.BOLD),
                 txt_status,
                 calibrate_button,
                 map_stack,
@@ -175,12 +175,12 @@ def main(page: ft.Page):
             if APP_STATE["mode"] == "CALIBRATING":
                 remaining_time = APP_STATE["calibration_end_time"] - current_time
                 if remaining_time > 0:
-                    txt_status.value = f"Calibrando... Definiendo perímetro en {remaining_time:.0f}s"
+                    txt_status.value = f"Calibrando... Definiendo perimetro en {remaining_time:.0f}s"
                 else:
                     APP_STATE["mode"] = "MONITORING"
-                    txt_status.value = "Monitoreando. Perímetros definidos."
+                    txt_status.value = "Monitoreando. Perimetros definidos."
                     calibrate_button.disabled = False
-                    add_log_message("Calibración finalizada. Definiendo perímetros.")
+                    add_log_message("Calibracion finalizada. Definiendo perimetros.")
                     
                     for data in APP_STATE["detected_beacons"].values():
                         if data['avg_rssi'] is not None:
@@ -195,7 +195,7 @@ def main(page: ft.Page):
                         p_inner = weakest_rssi - 5
                         p_mid = p_inner - 15 
                         p_outer = p_inner - 30
-                        add_log_message(f"Perímetros RSSI: Z1 > {p_inner:.1f}, Z2 > {p_mid:.1f}, Z3 > {p_outer:.1f}")
+                        add_log_message(f"Perimetros RSSI: Z1 > {p_inner:.1f}, Z2 > {p_mid:.1f}, Z3 > {p_outer:.1f}")
 
                     p_inner = min(-35, p_inner)
                     APP_STATE["perimeter_rssi_levels"] = sorted([p_inner, p_mid, p_outer], reverse=True)
@@ -220,7 +220,7 @@ def main(page: ft.Page):
                             
                             if new_status != old_status:
                                 data['status'] = new_status
-                                add_log_message(f"Baliza {key} cambió de {old_status} a {new_status}.")
+                                add_log_message(f"Baliza {key} cambio de {old_status} a {new_status}.")
                                 if new_status == 'FUERA' or old_status == 'FUERA':
                                     log_zone_change_event(key, old_status, new_status, add_log_message)
             
